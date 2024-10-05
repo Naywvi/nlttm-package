@@ -2,11 +2,12 @@ package _config
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 )
 
-// Fonction pour lire le fichier de configuration
+// Fonction pour lire le fichier de configuration générique
 func LoadConfig(filename string) (map[string]string, error) {
 	config := make(map[string]string)
 
@@ -30,28 +31,40 @@ func LoadConfig(filename string) (map[string]string, error) {
 	return config, scanner.Err()
 }
 
-// Fonction pour lire le fichier des packages
-func LoadPackagesConfig(filename string) (map[string][]string, error) {
-	packages := make(map[string][]string)
+// Fonction pour charger les commandes d'une section spécifique du fichier de configuration du package
+func LoadPackageSectionCommands(packageName string, section string) ([]string, error) {
+	// Construire le chemin absolu vers le fichier de configuration du package dans /etc/nlttm/config/packages/
+	filename := fmt.Sprintf("/etc/nlttm/config/packages/%s.conf", packageName)
 
+	// Vérifier si le fichier existe
 	file, err := os.Open(filename)
 	if err != nil {
-		return packages, err
+		return nil, fmt.Errorf("Le fichier de configuration pour le package %s est introuvable : %v", packageName, err)
 	}
 	defer file.Close()
 
+	// Lire les commandes de la section spécifiée
+	var commands []string
+	var inSection bool
 	scanner := bufio.NewScanner(file)
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if len(line) > 0 && !strings.HasPrefix(line, "#") { // Ignorer les lignes vides ou commentaires
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				key := parts[0]
-				values := strings.Split(parts[1], " ")
-				packages[key] = values
-			}
+		if len(line) > 0 && strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			// Détecter le début d'une section
+			inSection = strings.Trim(line, "[]") == section
+			continue
+		}
+
+		// Ajouter les commandes à partir de la section courante
+		if inSection && len(line) > 0 && !strings.HasPrefix(line, "#") { // Ignorer les lignes vides ou les commentaires
+			commands = append(commands, line)
 		}
 	}
 
-	return packages, scanner.Err()
+	if len(commands) == 0 {
+		return nil, fmt.Errorf("Section %s introuvable ou vide dans %s.conf", section, packageName)
+	}
+
+	return commands, scanner.Err()
 }

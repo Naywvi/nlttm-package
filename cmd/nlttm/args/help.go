@@ -7,9 +7,9 @@ import (
 
 func Help(missingArg bool, arg string) {
 	if missingArg {
-		fmt.Println(true)
+		fmt.Println("help func true")
 	} else {
-		fmt.Println(false, arg)
+		fmt.Println("help func false", arg)
 		os.Exit(1)
 	}
 }

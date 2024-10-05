@@ -3,6 +3,7 @@ APP_NAME = nlttm
 VERSION = 1.0.0
 BUILD_DIR = build
 DEB_DIR = debian
+CONF_DIR = /etc/nlttm
 
 # Couleurs ANSI
 RED = \033[31m
@@ -33,18 +34,38 @@ fix-control:
 
 # Compilation du programme Go
 build:
-	@echo "$(BLUE)==> Compilation de $(APP_NAME) pour $(GOOS)...$(RESET)"
+	@echo "$(BLUE)==> Compilation de $(APP_NAME)...$(RESET)"
 	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)/
 	@echo "$(GREEN)==> Compilation terminée$(RESET)"
 
+# Copie des fichiers de configuration et du binaire
+install:
+	@echo "$(BLUE)==> Création de la structure /etc/nlttm...$(RESET)"
+	sudo mkdir -p $(CONF_DIR)/config/packages
+	sudo mkdir -p $(CONF_DIR)/debian
+
+	@echo "$(BLUE)==> Copie des fichiers de configuration dans $(CONF_DIR)...$(RESET)"
+	sudo cp config/nlttm.conf $(CONF_DIR)/nlttm.conf
+	sudo cp -r config/packages/* $(CONF_DIR)/config/packages/ # Copier tous les fichiers de packages
+
+	@echo "$(GREEN)==> Fichiers de configuration copiés avec succès$(RESET)"
+
+	@echo "$(BLUE)==> Vérification et création de /usr/local/bin si nécessaire...$(RESET)"
+	sudo mkdir -p /usr/local/bin
+
+	@echo "$(BLUE)==> Installation du binaire dans /usr/local/bin...$(RESET)"
+	sudo cp $(BUILD_DIR)/$(APP_NAME) /usr/local/bin/$(APP_NAME)
+	@echo "$(GREEN)==> Binaire installé avec succès$(RESET)"
+
 # Création de l'arborescence Debian et du package .deb
-deb: build fix-control loading
+deb: build install fix-control loading
 	@echo "$(BLUE)==> Création de l'arborescence Debian...$(RESET)"
 	mkdir -p $(DEB_DIR)/usr/local/bin
 	cp $(BUILD_DIR)/$(APP_NAME) $(DEB_DIR)/usr/local/bin/
 
-	mkdir -p $(DEB_DIR)/etc/$(APP_NAME)
-	cp config/$(APP_NAME).conf $(DEB_DIR)/etc/$(APP_NAME)/
+	mkdir -p $(DEB_DIR)/etc/nlttm/config/packages
+	cp config/nlttm.conf $(DEB_DIR)/etc/nlttm/nlttm.conf
+	cp -r config/packages/* $(DEB_DIR)/etc/nlttm/config/packages/ # Copier tous les fichiers de packages
 
 	@echo "$(BLUE)==> Construction du fichier .deb...$(RESET)"
 	dpkg-deb --build $(DEB_DIR) $(APP_NAME)_$(VERSION)_amd64.deb

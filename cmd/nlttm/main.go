@@ -9,10 +9,8 @@ import (
 
 func main() {
 	var (
-		save_args         [][]string
-		config, err       = _config.LoadConfig("config/nlttm.conf")
-		packages, errPack = _config.LoadPackagesConfig("config/packages.conf")
-		args              = os.Args[1:]
+		config, err = _config.LoadConfig("/etc/nlttm/nlttm.conf") // Chemin mis à jour pour le fichier de config principal
+		args        = os.Args[1:]
 	)
 
 	if err != nil {
@@ -20,57 +18,76 @@ func main() {
 		os.Exit(65)
 	}
 
-	if errPack != nil {
-		fmt.Println("Erreur de chargement du fichier des packages:", errPack)
-		os.Exit(66)
-	}
-
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "-h", "--help":
-			save_args = append(save_args, []string{"help"})
+			_args.Help(false, args[i])
 		case "-v", "--version":
-			save_args = append(save_args, []string{"version"})
 			fmt.Println("Version :", config["version"])
 		case "-i", "--install":
-			var installArgs []string
-			for j := i + 1; j < len(args); j++ {
-				if args[j][0] == '-' {
-					break
-				}
-				if isValidPackage(args[j], packages["install"]) {
-					installArgs = append(installArgs, args[j])
-				} else {
-					fmt.Print(args[i][0])
-					fmt.Printf("Package inconnu : %s\n", args[j])
-					os.Exit(2)
-				}
-				i++
-			}
-			save_args = append(save_args, append([]string{"install"}, installArgs...))
+			installPackage(args, i)
+		case "-d", "--delete":
+			deletePackage(args, i)
+		case "-c", "--check":
+			checkPackage(args, i)
 		default:
 			_args.Help(false, args[i])
 			os.Exit(2)
 		}
 	}
-	for _, arg := range args[1:] {
-		if commands, ok := packages[arg]; ok {
-			_args.Install(arg, commands)
-		} else if arg != "-i" && arg != "--install" {
-			fmt.Printf("Package inconnu : %s\n", arg)
-			os.Exit(20)
-		}
-	}
-	//fmt.Print(save_args)
-
 }
 
-// Fonction pour vérifier si les packages sont valides
-func isValidPackage(arg string, validPackages []string) bool {
-	for _, pkg := range validPackages {
-		if arg == pkg {
-			return true
+// Fonction pour gérer les prérequis, puis l'installation des packages
+func installPackage(args []string, startIndex int) {
+	for j := startIndex + 1; j < len(args); j++ {
+		if args[j][0] == '-' {
+			break
 		}
+
+		// Charger les prérequis depuis /etc/nlttm/config/packages/
+		prereqs, err := _config.LoadPackageSectionCommands(args[j], "prerequisites")
+		if err == nil {
+			_args.Prerequisites(args[j], prereqs)
+		}
+
+		// Charger et installer le package depuis /etc/nlttm/config/packages/
+		commands, err := _config.LoadPackageSectionCommands(args[j], "installation")
+		if err != nil {
+			fmt.Printf("Erreur lors du chargement de la section installation pour le package %s: %v\n", args[j], err)
+			os.Exit(2)
+		}
+		_args.Install(args[j], commands)
 	}
-	return false
+}
+
+// Fonction pour gérer la suppression des packages
+func deletePackage(args []string, startIndex int) {
+	for j := startIndex + 1; j < len(args); j++ {
+		if args[j][0] == '-' {
+			break
+		}
+		// Charger la section "delete" depuis /etc/nlttm/config/packages/
+		commands, err := _config.LoadPackageSectionCommands(args[j], "delete")
+		if err != nil {
+			fmt.Printf("Erreur lors du chargement de la section delete pour le package %s: %v\n", args[j], err)
+			os.Exit(2)
+		}
+		_args.Delete(args[j], commands)
+	}
+}
+
+// Fonction pour vérifier l'état des packages
+func checkPackage(args []string, startIndex int) {
+	for j := startIndex + 1; j < len(args); j++ {
+		if args[j][0] == '-' {
+			break
+		}
+		// Charger la section "check" depuis /etc/nlttm/config/packages/
+		commands, err := _config.LoadPackageSectionCommands(args[j], "check")
+		if err != nil {
+			fmt.Printf("Erreur lors du chargement de la section check pour le package %s: %v\n", args[j], err)
+			os.Exit(2)
+		}
+		_args.Check(args[j], commands)
+	}
 }

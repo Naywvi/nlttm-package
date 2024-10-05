@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Ce script est exécuté après la suppression de nlttm
+
+if [ "$1" = "remove" ]; then
+    echo "Suppression des dépendances de NLTTM..."
+    apt-get remove --purge dolibarr nextcloud -y
+fi
