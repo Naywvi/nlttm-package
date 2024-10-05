@@ -48,7 +48,7 @@ func executeCommands(sectionName string, packageName string, commands []string) 
 			fmt.Printf("Sortie de la commande : %s\n", out)
 			continue
 		}
-		fmt.Printf("Sortie de la commande : %s\n", out)
+		// fmt.Printf("Sortie de la commande : %s\n", out)
 	}
 
 	fmt.Printf("%s %s terminé pour le package %s\n", green("[ Section ] "), yellow(sectionName), yellow(packageName))
