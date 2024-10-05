@@ -1,0 +1,7 @@
+Package: nlttm
+Version: 1.0.0
+Section: base
+Priority: optional
+Architecture: amd64
+Maintainer: Your Name <your.email@example.com>
+Description: This is a brief description of the nlttm package.
